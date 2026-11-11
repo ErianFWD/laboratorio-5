@@ -35,8 +35,8 @@ test('la raíz enlaza /api-docs y Swagger sirve HTML, assets y el contrato JSON'
   assert.match(response.text, /swagger-ui/);
   await request(app).get('/api-docs/swagger-ui.css').expect(200).expect('Content-Type', /css/);
   const setup = await request(app).get('/api-docs/swagger-ui-init.js').expect(200);
-  assert.match(setup.text, /preguntarClaude/);
-  assert.doesNotMatch(setup.text, /ANTHROPIC_API_KEY/);
+  assert.match(setup.text, /preguntarDeepSeek/);
+  assert.doesNotMatch(setup.text, /DEEPSEEK_API_KEY/);
   const schema = await request(app).get('/api-docs/openapi.json').expect(200);
   assert.deepEqual(schema.body, openapi);
 });
