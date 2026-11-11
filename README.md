@@ -102,17 +102,19 @@ npm test
 - `npm ci`: instalación reproducible completada; la auditoría de esa instalación informó cero vulnerabilidades.
 - `npm test`: **26 pruebas aprobadas**, sin fallos ni pruebas omitidas. Cubren CRUD, estados 200/201/204/400/404, límites de Zod, rechazo antes de llamar a IA, errores de conexión/timeout y del proveedor, preservación de contadores, Swagger y validez de OpenAPI 3.
 - `npm start` y `npm run dev`: arranque comprobado con solicitudes HTTP reales a `/` y `/api-docs/`, ambas con 200.
+- Pregunta real a DeepSeek: estado 200, **26 tokens de entrada y 208 de salida**.
+- Resumen real de una nota: estado 200, exactamente tres viñetas, **125 tokens de entrada y 53 de salida**.
 - Llamada real a DeepSeek con una clave deliberadamente falsa: **401 del proveedor → 502 de la API**, con `IA_NO_DISPONIBLE` y sin detalles internos. La captura desde Swagger sigue pendiente.
 
-Las pruebas automáticas del SDK usan respuestas controladas mediante `fetch`; sus textos y contadores son fixtures y no acreditan una respuesta real ni consumo de DeepSeek. Los ejemplos de Swagger también son ilustrativos. No se hicieron consultas con una clave válida durante esta verificación.
+Las pruebas automáticas del SDK usan respuestas controladas mediante `fetch`; sus textos y contadores son fixtures. Los resultados enumerados arriba provienen de llamadas reales realizadas el 11 de noviembre de 2026 con la configuración local. Los ejemplos de Swagger siguen siendo ilustrativos.
 
 | Evidencia de entrega | Estado |
 | --- | --- |
-| Pregunta libre con respuesta real de DeepSeek | **Pendiente** de clave válida y captura en Swagger. |
-| Resumen real de una nota en tres viñetas | **Pendiente** de clave válida y captura en Swagger. |
+| Pregunta libre con respuesta real de DeepSeek | Respuesta y tokens verificados; **captura en Swagger pendiente**. |
+| Resumen real de una nota en tres viñetas | Respuesta y tokens verificados; **captura en Swagger pendiente**. |
 | Error 502 con clave falsa | Comportamiento real verificado; **captura en Swagger pendiente**. |
-| Tokens de entrada/salida de la pregunta libre | **Pendientes**; copiar `uso` de la respuesta real. |
-| Tokens de entrada/salida del resumen | **Pendientes**; copiar `uso` de la respuesta real. |
+| Tokens de entrada/salida de la pregunta libre | **26 / 208**, reportados por DeepSeek. |
+| Tokens de entrada/salida del resumen | **125 / 53**, reportados por DeepSeek. |
 
 ## Cómo obtener las tres capturas en Swagger
 
@@ -148,31 +150,31 @@ Las pruebas automáticas del SDK usan respuestas controladas mediante `fetch`; s
 
    Capturá la operación, el código y el body. Una clave vacía también produce 502, pero no realiza una llamada al proveedor y no sirve como evidencia de una clave falsa. Si no hay conexión con DeepSeek se obtiene 503: resolvé la conexión y repetí, sin alterar ni fabricar el resultado. Restaurá tu clave válida o dejala vacía y reiniciá al terminar. No incluyás `.env`, la consola con credenciales ni una clave real en las capturas.
 
-Todavía sin clave válida podés completar las pruebas CRUD, validar errores de entrada y obtener la captura de clave falsa si hay conexión al proveedor. Las dos capturas exitosas y sus tokens deben esperar una clave válida con acceso al modelo.
+Las llamadas reales ya fueron verificadas. Solo quedan pendientes las tres capturas desde Swagger UI; no deben mostrar el archivo `.env`, una terminal con credenciales ni la clave real.
 
 ## Seis reflexiones
 
 1. **Seguridad de la clave.** La clave de DeepSeek pertenece al servidor porque habilita solicitudes con cargo a la cuenta. Se lee de `.env` después de cargar dotenv; no se manda al navegador, no forma parte del contrato Swagger ni se incluye en respuestas. Se versiona solo el ejemplo vacío y se revisa el staging antes de cada commit. Si una clave se publica, hay que revocarla y reemplazarla; quitarla del último archivo no elimina su presencia del historial.
 
-2. **Manejo del 401 de DeepSeek.** El 401 indica que DeepSeek rechazó las credenciales del backend. El cliente de esta API no recibe los detalles privados del proveedor: el servicio lo convierte en 502 con `IA_NO_DISPONIBLE`. El servidor sigue atendiendo notas. La conversión está cubierta por una prueba controlada; la captura real de Swagger con clave falsa sigue pendiente.
+2. **Manejo del 401 de DeepSeek.** El 401 indica que DeepSeek rechazó las credenciales del backend. El cliente de esta API no recibe los detalles privados del proveedor: el servicio lo convierte en 502 con `IA_NO_DISPONIBLE`. El servidor sigue atendiendo notas. La conversión se verificó con una llamada real usando una clave deliberadamente falsa; la captura desde Swagger sigue pendiente.
 
 3. **Diferencia entre `system` y `messages`.** En la API compatible con OpenAI, la instrucción de sistema se envía como el primer elemento de `messages` con rol `system`; el contenido se envía después con rol `user`. El primero define idioma, brevedad y formato, mientras el segundo contiene la pregunta o nota. En el resumen se aclara que la nota son datos para reducir el riesgo de que sus instrucciones cambien la tarea; el cumplimiento real de las tres viñetas se revisa en la captura pendiente.
 
-4. **Consumo de tokens.** DeepSeek reporta `prompt_tokens` y `completion_tokens`; esta API los expone como `input_tokens` y `output_tokens`. El texto, las instrucciones y la respuesta afectan el consumo. `max_tokens` limita la salida; no es el consumo medido ni limita por sí solo la entrada. **Pendiente:** registrar los valores reales de una pregunta y un resumen; no se sustituyen por números de pruebas ni ejemplos. No se ha comprobado un costo real.
+4. **Consumo de tokens.** DeepSeek reporta `prompt_tokens` y `completion_tokens`; esta API los expone como `input_tokens` y `output_tokens`. El texto, las instrucciones y la respuesta afectan el consumo. `max_tokens` limita la salida; no es el consumo medido ni limita por sí solo la entrada. La pregunta real consumió 26 tokens de entrada y 208 de salida; el resumen consumió 125 y 53. Estos valores vienen del proveedor y no de fixtures. No se calculó el costo monetario.
 
 5. **Validación del body.** El contenido HTTP es entrada no confiable. Zod comprueba presencia, tipos, longitudes y campos adicionales después de recortar espacios. Un body inválido recibe 400 antes de guardar una nota o llamar a DeepSeek, evitando datos inconsistentes y solicitudes innecesarias. El parser JSON y el middleware central también transforman JSON roto o cuerpos excesivos en errores JSON controlados.
 
-6. **Integración con Git: flujo individual real.** Se revisaron estado, rama, `origin` y archivos antes de editar. El repositorio estaba vacío, `main` no tenía commits y `origin` tampoco tenía referencias. Se creó `feature/laboratorio-5`; una sola persona cubre notas, Swagger e IA. Se implementaron y verificaron avances por configuración, CRUD y Zod, proveedor de IA y errores, Swagger y README. Al recibir las presentaciones se ajustó el proyecto a la guía y, tras la autorización docente, se sustituyó Claude por DeepSeek sin reescribir los commits anteriores. Antes de cada commit se revisaron el staging, el diff y posibles secretos. `main` y la rama de trabajo se publicaron en GitHub y el autor abrió el pull request.
+6. **Integración con Git: flujo individual real.** Se revisaron estado, rama, `origin` y archivos antes de editar. El repositorio estaba vacío, `main` no tenía commits y `origin` tampoco tenía referencias. Se creó `feature/laboratorio-5`; una sola persona cubre notas, Swagger e IA. Se implementaron y verificaron avances por configuración, CRUD y Zod, proveedor de IA y errores, Swagger y README. Al recibir las presentaciones se ajustó el proyecto a la guía y, tras la autorización docente, se sustituyó Claude por DeepSeek sin reescribir los commits anteriores. Antes de cada commit se revisaron el staging, el diff y posibles secretos. Se publicaron ambas ramas, se abrió y fusionó el pull request #1, y luego se incorporó la migración a DeepSeek en `main`.
 
 ## Entrega mediante Git
 
 ```powershell
 git status
-git log --oneline feature/laboratorio-5
-git push -u origin feature/laboratorio-5
+git log --oneline main
+git push origin main
 ```
 
-No se ejecutó el push ni se abrió un pull request. Como `origin` comenzó vacío y `main` no tiene historial, antes de abrir el PR habrá que establecer una rama base con historial compartido, por ejemplo `main`. La definición y publicación de esa base también quedan pendientes.
+El repositorio está publicado en GitHub. El pull request #1 fue fusionado y `main` contiene la integración autorizada con DeepSeek. `.env` permanece ignorado y nunca se incluyó en los commits.
 
 ## Referencias
 
