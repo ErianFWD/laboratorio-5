@@ -5,4 +5,8 @@ const notaSchema = z.object({
   contenido: z.string().trim().min(1).max(5000),
 }).strict();
 
-module.exports = { notaSchema };
+const preguntaSchema = z.object({
+  pregunta: z.string().trim().min(3).max(2000),
+}).strict();
+
+module.exports = { notaSchema, preguntaSchema };
