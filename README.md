@@ -123,6 +123,12 @@ Las pruebas automáticas del SDK usan respuestas controladas mediante `fetch`; s
 | Tokens de entrada/salida de la pregunta libre | **26 / 208**, reportados por DeepSeek. |
 | Tokens de entrada/salida del resumen | **125 / 53**, reportados por DeepSeek. |
 
+### Evidencias incorporadas
+
+El repositorio incluye [Evidencias_Laboratorio_5.pdf](evidencias/Evidencias_Laboratorio_5.pdf), un documento de seis páginas con capturas de Swagger para listado, creación y consulta de notas, un caso 404 al resumir una nota inexistente y los errores documentados en OpenAPI. El PDF no contiene claves ni variables de entorno.
+
+Las capturas de la pregunta real, el resumen exitoso en tres viñetas y el 502 ejecutado con clave falsa continúan pendientes; los tres comportamientos ya fueron verificados técnicamente y están descritos arriba.
+
 ## Cómo obtener las tres capturas en Swagger
 
 1. Creá `laboratorio-5/.env` a partir de `.env.example`, configurá `DEEPSEEK_API_KEY` con una clave válida y reiniciá el servidor. Si la terminal ya define esa variable, actualizala o quitála de la sesión para que dotenv lea el archivo. Abrí `/api-docs`, desplegá **POST /api/ia/preguntar**, seleccioná **Try it out**, enviá el siguiente JSON y presioná **Execute**:
