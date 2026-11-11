@@ -10,7 +10,7 @@ function createNotasRouter({ notasService, claudeService }) {
   });
 
   router.get('/:id', (req, res) => {
-    res.json(notasService.obtener(req.params.id));
+    res.json(notasService.obtener(Number(req.params.id)));
   });
 
   router.post('/', validateBody(notaSchema), (req, res) => {
@@ -19,15 +19,15 @@ function createNotasRouter({ notasService, claudeService }) {
   });
 
   router.delete('/:id', (req, res) => {
-    notasService.eliminar(req.params.id);
+    notasService.eliminar(Number(req.params.id));
     res.status(204).end();
   });
 
   router.post('/:id/resumen', async (req, res) => {
     // Buscar primero: una nota inexistente nunca consume una llamada a Claude.
-    const nota = notasService.obtener(req.params.id);
+    const nota = notasService.obtener(Number(req.params.id));
     const { respuesta, uso } = await claudeService.resumir(nota);
-    res.json({ resumen: respuesta, uso });
+    res.json({ notaId: nota.id, resumen: respuesta, uso });
   });
 
   return router;

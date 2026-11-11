@@ -36,7 +36,7 @@ Si cambiás `PORT`, usá ese puerto en las URLs. `GET /` devuelve `{ "documentac
 | `CLAUDE_MODEL` | `claude-haiku-4-5-20251001` | Modelo enviado a `messages.create`. |
 | `PORT` | `3000` | Puerto HTTP entero entre 1 y 65535. |
 
-`src/server.js` carga dotenv antes de importar la app y su configuración. Una variable ya definida en el proceso tiene prioridad sobre `.env`. La API puede iniciar sin clave y permite gestionar notas; las operaciones de IA devuelven 503 hasta configurar la clave. Un puerto o modelo vacío/inválido impide iniciar con un mensaje que no incluye valores privados.
+`src/server.js` carga dotenv antes de importar la app y su configuración. Una variable ya definida en el proceso tiene prioridad sobre `.env`. La API puede iniciar sin clave y permite gestionar notas; las operaciones de IA devuelven 502 hasta configurar la clave. Un puerto o modelo vacío/inválido impide iniciar con un mensaje que no incluye valores privados.
 
 `.gitignore` excluye `.env`, sus variantes locales y `node_modules/`; `.env.example` es la única excepción de entorno que se versiona. El archivo de bloqueo `package-lock.json` permite reinstalar las mismas dependencias con `npm ci`.
 
@@ -63,11 +63,11 @@ test/                        # pruebas HTTP, SDK controlado y OpenAPI
 | POST | `/api/notas` | `{ "titulo": "Tema", "contenido": "Texto" }` | 201 con nota y header `Location`, o 400. |
 | DELETE | `/api/notas/:id` | Ninguno | 204 sin body, o 404. |
 | POST | `/api/ia/preguntar` | `{ "pregunta": "¿Qué es Express?" }` | 200 con `{ respuesta, uso }`, 400, 429, 502 o 503. |
-| POST | `/api/notas/:id/resumen` | Ninguno | 200 con `{ resumen, uso }`, 404, 429, 502 o 503. |
+| POST | `/api/notas/:id/resumen` | Ninguno | 200 con `{ notaId, resumen, uso }`, 404, 429, 502 o 503. |
 
 Zod elimina los espacios iniciales y finales y después valida: `titulo` entre 1 y 100 caracteres, `contenido` entre 1 y 5000 y `pregunta` entre 3 y 2000. Los campos son obligatorios y deben ser strings. No se admiten campos adicionales. JSON mal formado y cuerpos mayores que 64 KB devuelven 400. Los errores inesperados devuelven 500 sin stack.
 
-Cada nota tiene `id` UUID, `titulo` y `contenido`. El resumen consulta la nota antes de invocar Claude: un ID inexistente responde 404 sin consumir una llamada. El resumen no modifica ni elimina la nota.
+Cada nota tiene `id` numérico incremental, `titulo` y `contenido`, como en la guía. El primer ID es 1 y los IDs eliminados no se reutilizan durante el proceso. El resumen consulta la nota antes de invocar Claude: un ID inexistente responde 404 sin consumir una llamada. El resumen no modifica ni elimina la nota y devuelve su identificador en `notaId`, además del texto y los contadores `uso`.
 
 El servicio llama `messages.create`, pide respuestas en español y concatena únicamente los bloques de texto. En el resumen, `system` solicita exactamente tres viñetas breves y trata el título y contenido como datos. Los límites de salida son 512 tokens para preguntas y 256 para resúmenes, con timeout de 30 segundos y sin reintentos automáticos. `uso` conserva los contadores `input_tokens` y `output_tokens` recibidos del proveedor; no estima ni inventa consumo.
 
@@ -76,8 +76,10 @@ El servicio llama `messages.create`, pide respuestas en español y concatena ún
 | Situación | Estado público | Código |
 | --- | --- | --- |
 | Límite de solicitudes del proveedor (429) | 429 | `IA_NO_DISPONIBLE` |
-| Falta de clave, conexión, timeout, HTTP 408 o errores 5xx del proveedor, incluido 529 | 503 | `IA_NO_DISPONIBLE` |
-| Clave rechazada (401), otros errores del proveedor o respuesta incompleta | 502 | `IA_NO_DISPONIBLE` |
+| Claude saturado (HTTP 529), error de conexión o timeout de red sin respuesta HTTP | 503 | `IA_NO_DISPONIBLE` |
+| Clave ausente/rechazada (401), cualquier otro error HTTP del proveedor (incluidos 400, 408, 500 y 503) o respuesta incompleta | 502 | `IA_NO_DISPONIBLE` |
+
+El mapeo de estados HTTP sigue el paso 10, diapositiva 16, de `Laboratorio_5_Express_Swagger_Claude.pptx`: 429 se conserva, 529 se convierte en 503 y los demás errores HTTP se convierten en 502. Los fallos de conexión y timeout sin respuesta HTTP se manejan por separado como 503.
 
 El mensaje público es genérico: no devuelve la clave, headers, identificadores internos, stack ni el texto original del error de Anthropic. El 404 por nota inexistente usa `NOTA_NO_ENCONTRADA` y tiene prioridad sobre la disponibilidad de IA.
 
@@ -135,7 +137,7 @@ Las pruebas automáticas del SDK usan respuestas controladas mediante `fetch`; s
    }
    ```
 
-   Capturá la operación, el código y el body. Una clave vacía produce 503 y no sirve para esta captura. Si no hay conexión con Anthropic también se obtiene 503: resolvé la conexión y repetí, sin alterar ni fabricar el resultado. Restaurá tu clave válida o dejala vacía y reiniciá al terminar. No incluyás `.env`, la consola con credenciales ni una clave real en las capturas.
+   Capturá la operación, el código y el body. Una clave vacía también produce 502, pero no realiza una llamada al proveedor y no sirve como evidencia de una clave falsa. Si no hay conexión con Anthropic se obtiene 503: resolvé la conexión y repetí, sin alterar ni fabricar el resultado. Restaurá tu clave válida o dejala vacía y reiniciá al terminar. No incluyás `.env`, la consola con credenciales ni una clave real en las capturas.
 
 Todavía sin clave válida podés completar las pruebas CRUD, validar errores de entrada y obtener la captura de clave falsa si hay conexión al proveedor. Las dos capturas exitosas y sus tokens deben esperar una clave válida con acceso al modelo.
 
@@ -151,7 +153,7 @@ Todavía sin clave válida podés completar las pruebas CRUD, validar errores de
 
 5. **Validación del body.** El contenido HTTP es entrada no confiable. Zod comprueba presencia, tipos, longitudes y campos adicionales después de recortar espacios. Un body inválido recibe 400 antes de guardar una nota o llamar a Claude, evitando datos inconsistentes y solicitudes innecesarias. El parser JSON y el middleware central también transforman JSON roto o cuerpos excesivos en errores JSON controlados.
 
-6. **Integración con Git: flujo individual real.** Se revisaron estado, rama, `origin` y archivos antes de editar. El repositorio estaba vacío, `main` no tenía commits y `origin` tampoco tenía referencias. Se creó `feature/laboratorio-5`; una sola persona cubre notas, Swagger y Claude. Se implementaron y verificaron avances en cinco commits: configuración; CRUD y Zod; Claude y errores; Swagger; y este README con reflexiones y evidencias. Antes de cada commit se revisaron los archivos preparados, el diff y posibles secretos. No hubo merge, revisión de compañeros ni resolución de conflictos que reportar. El push y el pull request quedan a cargo del autor.
+6. **Integración con Git: flujo individual real.** Se revisaron estado, rama, `origin` y archivos antes de editar. El repositorio estaba vacío, `main` no tenía commits y `origin` tampoco tenía referencias. Se creó `feature/laboratorio-5`; una sola persona cubre notas, Swagger y Claude. Se implementaron y verificaron avances en cinco commits iniciales: configuración; CRUD y Zod; Claude y errores; Swagger; y README con reflexiones y evidencias. Al recibir las presentaciones se agregaron commits de ajuste a la guía, sin reescribir los anteriores. Antes de cada commit se revisaron los archivos preparados, el diff y posibles secretos. No hubo merge, revisión de compañeros ni resolución de conflictos que reportar. El push y el pull request quedan a cargo del autor.
 
 ## Entrega mediante Git
 

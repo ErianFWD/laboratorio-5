@@ -79,7 +79,7 @@ test('resumen busca la nota primero y pide tres viñetas breves en español', as
     .send({ titulo: 'Tema', contenido: 'Contenido.' }).expect(201)).body;
   const response = await request(app).post(`/api/notas/${nota.id}/resumen`).expect(200);
   assert.deepEqual(response.body, {
-    resumen: '- Uno.\n- Dos.\n- Tres.', uso: { input_tokens: 12, output_tokens: 7 },
+    notaId: nota.id, resumen: '- Uno.\n- Dos.\n- Tres.', uso: { input_tokens: 12, output_tokens: 7 },
   });
   assert.equal(calls, 1);
   assert.deepEqual((await request(app).get(`/api/notas/${nota.id}`)).body, nota);
@@ -87,7 +87,7 @@ test('resumen busca la nota primero y pide tres viñetas breves en español', as
 
 test('los errores HTTP del SDK se mapean sin filtrar detalles en ambos endpoints', async (t) => {
   for (const [upstream, expected] of [[401, 502], [403, 502], [400, 502], [404, 502],
-    [429, 429], [408, 503], [500, 503], [503, 503], [529, 503]]) {
+    [429, 429], [408, 502], [500, 502], [503, 502], [529, 503]]) {
     await t.test(`Claude ${upstream} → API ${expected}`, async () => {
       let calls = 0;
       const client = sdkWithFetch(async () => {
@@ -115,10 +115,10 @@ test('los errores HTTP del SDK se mapean sin filtrar detalles en ambos endpoints
   }
 });
 
-test('la falta de clave permite notas y devuelve 503 en IA; la nota ausente conserva 404', async () => {
+test('la falta de clave permite notas y devuelve 502 en IA; la nota ausente conserva 404', async () => {
   const app = createApp({ claudeService: createClaudeService({ apiKey: '' }) });
   await request(app).post('/api/notas').send({ titulo: 'A', contenido: 'B' }).expect(201);
-  const response = await request(app).post('/api/ia/preguntar').send({ pregunta: 'Hola' }).expect(503);
+  const response = await request(app).post('/api/ia/preguntar').send({ pregunta: 'Hola' }).expect(502);
   assert.equal(response.body.error.codigo, 'IA_NO_DISPONIBLE');
   await request(app).post('/api/notas/no-existe/resumen').expect(404);
 });

@@ -6,8 +6,7 @@ function providerError(error) {
   let status = 502;
   if (error?.status === 429) {
     status = 429;
-  } else if (error instanceof Anthropic.APIConnectionError
-    || error?.status === 408 || error?.status >= 500) {
+  } else if (error?.status === 529 || error instanceof Anthropic.APIConnectionError) {
     status = 503;
   }
 
@@ -21,7 +20,7 @@ function createClaudeService({ apiKey = config.apiKey, model = config.model, cli
   async function generar(system, content, maxTokens) {
     if (!anthropic) {
       if (!apiKey) {
-        throw new AppError(503, 'IA_NO_DISPONIBLE', 'El servicio de IA no está disponible. Intentá más tarde.');
+        throw new AppError(502, 'IA_NO_DISPONIBLE', 'El servicio de IA no está disponible. Intentá más tarde.');
       }
       anthropic = new Anthropic({ apiKey, timeout: 30000, maxRetries: 0 });
     }

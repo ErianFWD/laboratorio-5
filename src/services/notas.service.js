@@ -1,8 +1,8 @@
-const { randomUUID } = require('node:crypto');
 const { AppError } = require('../utils/app-error');
 
 function createNotasService() {
   const notas = new Map();
+  let nextId = 1;
 
   function obtener(id) {
     const nota = notas.get(id);
@@ -16,7 +16,7 @@ function createNotasService() {
     listar: () => Array.from(notas.values(), (nota) => ({ ...nota })),
     obtener,
     crear({ titulo, contenido }) {
-      const nota = { id: randomUUID(), titulo, contenido };
+      const nota = { id: nextId++, titulo, contenido };
       notas.set(nota.id, nota);
       return { ...nota };
     },

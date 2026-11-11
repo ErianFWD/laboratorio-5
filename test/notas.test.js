@@ -9,7 +9,7 @@ test('ciclo de notas: 200, 201, 204 y 404 con persistencia durante el proceso', 
   const created = await request(app).post('/api/notas')
     .send({ titulo: '  Laboratorio 5  ', contenido: '  Notas con Express.  ' }).expect(201);
   const nota = created.body;
-  assert.match(nota.id, /^[0-9a-f-]{36}$/);
+  assert.equal(nota.id, 1);
   assert.equal(nota.titulo, 'Laboratorio 5');
   assert.equal(nota.contenido, 'Notas con Express.');
   assert.equal(created.headers.location, `/api/notas/${nota.id}`);
@@ -17,6 +17,10 @@ test('ciclo de notas: 200, 201, 204 y 404 con persistencia durante el proceso', 
   assert.deepEqual((await request(app).get('/api/notas').expect(200)).body, [nota]);
   const deleted = await request(app).delete(`/api/notas/${nota.id}`).expect(204);
   assert.equal(deleted.text, '');
+  const second = await request(app).post('/api/notas')
+    .send({ titulo: 'Otra nota', contenido: 'Los IDs no se reutilizan.' }).expect(201);
+  assert.equal(second.body.id, 2);
+  await request(app).delete('/api/notas/2').expect(204);
   await request(app).get(`/api/notas/${nota.id}`).expect(404);
   await request(app).delete(`/api/notas/${nota.id}`).expect(404);
   assert.deepEqual((await request(app).get('/api/notas').expect(200)).body, []);
@@ -56,6 +60,10 @@ test('una nota inexistente responde 404 y las instancias no comparten memoria', 
   const other = createApp();
   const response = await request(other).get(`/api/notas/${nota.id}`).expect(404);
   assert.equal(response.body.error.codigo, 'NOTA_NO_ENCONTRADA');
+  for (const id of ['texto', '0', '-1', '1.5', '9999']) {
+    await request(app).get(`/api/notas/${id}`).expect(404);
+    await request(app).delete(`/api/notas/${id}`).expect(404);
+  }
 });
 
 test('un body demasiado grande devuelve 400 sin almacenarse', async () => {

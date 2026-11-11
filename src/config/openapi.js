@@ -14,16 +14,16 @@ const internalError = errorResponse('Error inesperado sin detalles internos.',
 const aiMessage = 'El servicio de IA no está disponible. Intentá más tarde.';
 const aiErrors = {
   429: errorResponse('Claude limitó las solicitudes. Intentá nuevamente más tarde.', 'IA_NO_DISPONIBLE', aiMessage),
-  502: errorResponse('Error del proveedor, incluida clave inválida (401) o respuesta incompleta.', 'IA_NO_DISPONIBLE', aiMessage),
-  503: errorResponse('Clave sin configurar, error de red, timeout o Claude no disponible.', 'IA_NO_DISPONIBLE', aiMessage),
+  502: errorResponse('Clave ausente, error HTTP distinto de 429/529 o respuesta incompleta.', 'IA_NO_DISPONIBLE', aiMessage),
+  503: errorResponse('Claude saturado (529), error de conexión o timeout de red.', 'IA_NO_DISPONIBLE', aiMessage),
 };
 const idParameter = {
   name: 'id', in: 'path', required: true,
   description: 'Identificador obtenido al crear la nota. Si no existe, responde 404.',
-  schema: { type: 'string', example: 'ea7ff629-65e7-44a2-965d-65fc8c546672' },
+  schema: { type: 'integer', minimum: 1, example: 1 },
 };
 const notaExample = {
-  id: 'ea7ff629-65e7-44a2-965d-65fc8c546672',
+  id: 1,
   titulo: 'Repaso de Express',
   contenido: 'Express organiza rutas y middlewares. Zod valida la entrada. Claude genera resúmenes.',
 };
@@ -121,7 +121,7 @@ const openapi = {
       Nota: {
         type: 'object', additionalProperties: false, required: ['id', 'titulo', 'contenido'],
         properties: {
-          id: { type: 'string', format: 'uuid', example: notaExample.id },
+          id: { type: 'integer', minimum: 1, example: notaExample.id },
           titulo: { type: 'string', minLength: 1, maxLength: 100 },
           contenido: { type: 'string', minLength: 1, maxLength: 5000 },
         },
@@ -148,8 +148,9 @@ const openapi = {
         },
       },
       ResumenIA: {
-        type: 'object', additionalProperties: false, required: ['resumen', 'uso'],
+        type: 'object', additionalProperties: false, required: ['notaId', 'resumen', 'uso'],
         properties: {
+          notaId: { type: 'integer', minimum: 1, example: notaExample.id },
           resumen: { type: 'string', minLength: 1,
             example: '- Ejemplo ilustrativo de una idea.\n- Segunda idea de ejemplo.\n- Tercera idea de ejemplo.' },
           uso: ref('Uso'),
