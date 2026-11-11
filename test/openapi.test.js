@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
 const SwaggerParser = require('@apidevtools/swagger-parser');
-const { openapi } = require('../src/config/openapi');
+const { openapi } = require('../src/config/swagger');
 const { createApp } = require('../src/app');
 
 test('OpenAPI 3 es válido y documenta las seis operaciones con sus estados', async () => {

@@ -20,7 +20,7 @@ Si `.env` ya existe, conservá su contenido: no vuelvas a copiar el ejemplo enci
 npm run dev
 ```
 
-Este comando observa los archivos y reinicia Node al detectar cambios. Detené el servidor con `Ctrl+C`. No ejecutes ambos comandos a la vez en el mismo puerto.
+Este comando usa nodemon para observar `src/` y reiniciar Node al detectar cambios. Detené el servidor con `Ctrl+C`. No ejecutes ambos comandos a la vez en el mismo puerto.
 
 - API: <http://localhost:3000>
 - Swagger UI: <http://localhost:3000/api-docs>
@@ -46,13 +46,21 @@ Si cambiás `PORT`, usá ese puerto en las URLs. `GET /` devuelve `{ "documentac
 src/
   server.js                  # dotenv y arranque HTTP
   app.js                     # composición de Express y Swagger
-  config/                    # variables y contrato OpenAPI
-  routes/                    # notas e IA
+  config/                    # variables y swagger.js con esquemas compartidos
+  routes/                    # notas e IA con documentación @openapi
   services/                  # almacenamiento en memoria y cliente Claude
   middlewares/               # validación y errores centralizados
   utils/                     # AppError y esquemas Zod
 test/                        # pruebas HTTP, SDK controlado y OpenAPI
 ```
+
+`swagger-jsdoc` genera las seis operaciones a partir de los comentarios `@openapi` situados sobre las rutas. `src/config/swagger.js` define OpenAPI 3, los esquemas y respuestas reutilizables; usa una ruta absoluta para localizar las anotaciones. Swagger UI muestra ese contrato en `/api-docs`, y los errores de sintaxis de las anotaciones impiden iniciar con documentación incompleta.
+
+## Correspondencia con el material recibido
+
+La implementación sigue `Laboratorio_5_Express_Swagger_Claude.pptx`: seis operaciones, notas en memoria con IDs numéricos, Zod, SDK oficial, resumen con `notaId`, mapeo de errores del paso 10, nodemon y documentación `@openapi` con `swagger-jsdoc`. Se conservan las condiciones expresas del pedido: CommonJS, Express 5, el modelo configurado en `.env.example`, trabajo individual y push/PR a cargo del autor.
+
+`agentes-node.pptx.pdf` aporta la separación entre rutas y servicios, la clave solo en el backend y la configuración del proveedor. Sus ejemplos de ES Modules, DeepSeek, `/api/agent`, historial y herramientas corresponden a una arquitectura de agentes distinta; no forman parte de las seis operaciones de este laboratorio. Los retos de conversación, streaming, rate limit y persistencia de la presentación son opcionales.
 
 ## Las seis operaciones
 

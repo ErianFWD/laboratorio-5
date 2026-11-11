@@ -1,6 +1,6 @@
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
-const { openapi } = require('./config/openapi');
+const { openapi } = require('./config/swagger');
 const { AppError } = require('./utils/app-error');
 const { errorHandler } = require('./middlewares/error-handler');
 const { createNotasService } = require('./services/notas.service');
