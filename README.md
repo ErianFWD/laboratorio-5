@@ -125,7 +125,7 @@ Las pruebas automáticas del SDK usan respuestas controladas mediante `fetch`; s
 
 ### Evidencias incorporadas
 
-El repositorio incluye [Evidencias_Laboratorio_5.pdf](evidencias/Evidencias_Laboratorio_5.pdf), un documento de seis páginas con capturas de Swagger para listado, creación y consulta de notas, un caso 404 al resumir una nota inexistente y los errores documentados en OpenAPI. El PDF no contiene claves ni variables de entorno.
+El repositorio incluye las evidencias en [PDF](evidencias/Evidencias_Laboratorio_5.pdf) y en formato [DOCX editable](evidencias/Evidencias_Laboratorio_5.docx). Ambos documentos contienen seis páginas con capturas de Swagger para listado, creación y consulta de notas, un caso 404 al resumir una nota inexistente y los errores documentados en OpenAPI. Ninguno contiene claves ni variables de entorno.
 
 Las capturas de la pregunta real, el resumen exitoso en tres viñetas y el 502 ejecutado con clave falsa continúan pendientes; los tres comportamientos ya fueron verificados técnicamente y están descritos arriba.
 
