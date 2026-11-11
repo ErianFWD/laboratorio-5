@@ -26,9 +26,11 @@ test('OpenAPI 3 es válido y documenta las seis operaciones con sus estados', as
   assert.equal(openapi.paths['/api/notas/{id}'].delete.responses[204].content, undefined);
 });
 
-test('la raíz enlaza /api-docs y Swagger sirve HTML, assets y el contrato JSON', async () => {
+test('la consola visual y Swagger sirven HTML, assets y el contrato JSON', async () => {
   const app = createApp();
-  assert.deepEqual((await request(app).get('/').expect(200)).body, { documentacion: '/api-docs' });
+  await request(app).get('/').expect(200).expect('Content-Type', /html/);
+  await request(app).get('/styles.css').expect(200).expect('Content-Type', /css/);
+  await request(app).get('/app.js').expect(200).expect('Content-Type', /javascript/);
   const redirect = await request(app).get('/api-docs').expect(301);
   assert.equal(redirect.headers.location, '/api-docs/');
   const response = await request(app).get('/api-docs/').expect(200).expect('Content-Type', /html/);

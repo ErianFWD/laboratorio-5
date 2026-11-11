@@ -22,11 +22,17 @@ npm run dev
 
 Este comando usa nodemon para observar `src/` y reiniciar Node al detectar cambios. Detené el servidor con `Ctrl+C`. No ejecutes ambos comandos a la vez en el mismo puerto.
 
-- API: <http://localhost:3000>
+- Consola visual: <http://localhost:3000>
 - Swagger UI: <http://localhost:3000/api-docs>
 - Contrato OpenAPI 3: <http://localhost:3000/api-docs/openapi.json>
 
-Si cambiás `PORT`, usá ese puerto en las URLs. `GET /` devuelve `{ "documentacion": "/api-docs" }`. El acceso a `/api-docs` redirige a `/api-docs/`.
+Si cambiás `PORT`, usá ese puerto en las URLs. `GET /` sirve la consola visual y el acceso a `/api-docs` redirige a `/api-docs/`.
+
+## Consola visual para aprender la API
+
+La página principal ofrece una interfaz tipo Postman simplificada con una identidad oscura en negro, rosa y azul océano. Permite ejecutar las seis operaciones sin salir del navegador y muestra el método, la ruta, el body JSON, el estado HTTP, el tiempo, el tamaño de la respuesta y los tokens de las operaciones de IA.
+
+La interfaz incluye explicaciones del recorrido navegador → Express → Zod → servicio → DeepSeek, un historial temporal y un checklist para las tres evidencias. Todo se ejecuta contra las rutas reales del backend; la clave permanece en `.env` y nunca se envía al navegador. Swagger continúa disponible como documentación oficial y para las capturas exigidas por la guía.
 
 ## Variables de entorno
 
@@ -53,6 +59,7 @@ src/
   middlewares/               # validación y errores centralizados
   utils/                     # AppError y esquemas Zod
 test/                        # pruebas HTTP, SDK controlado y OpenAPI
+public/                      # consola visual HTML, CSS y JavaScript
 ```
 
 `swagger-jsdoc` genera las seis operaciones a partir de los comentarios `@openapi` situados sobre las rutas. `src/config/swagger.js` define OpenAPI 3, los esquemas y respuestas reutilizables; usa una ruta absoluta para localizar las anotaciones. Swagger UI muestra ese contrato en `/api-docs`, y los errores de sintaxis de las anotaciones impiden iniciar con documentación incompleta.
@@ -100,7 +107,7 @@ npm test
 ```
 
 - `npm ci`: instalación reproducible completada; la auditoría de esa instalación informó cero vulnerabilidades.
-- `npm test`: **26 pruebas aprobadas**, sin fallos ni pruebas omitidas. Cubren CRUD, estados 200/201/204/400/404, límites de Zod, rechazo antes de llamar a IA, errores de conexión/timeout y del proveedor, preservación de contadores, Swagger y validez de OpenAPI 3.
+- `npm test`: **27 pruebas aprobadas**, sin fallos ni pruebas omitidas. Cubren la consola visual y sus assets, CRUD, estados 200/201/204/400/404, límites de Zod, rechazo antes de llamar a IA, errores de conexión/timeout y del proveedor, preservación de contadores, Swagger y validez de OpenAPI 3.
 - `npm start` y `npm run dev`: arranque comprobado con solicitudes HTTP reales a `/` y `/api-docs/`, ambas con 200.
 - Pregunta real a DeepSeek: estado 200, **26 tokens de entrada y 208 de salida**.
 - Resumen real de una nota: estado 200, exactamente tres viñetas, **125 tokens de entrada y 53 de salida**.

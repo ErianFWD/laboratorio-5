@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Consola visual para aprender y probar la API del Laboratorio #5.">
+  <title>Lab #5 · API Playground</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="ambient ambient-pink" aria-hidden="true"></div>
+  <div class="ambient ambient-blue" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Inicio del laboratorio">
+      <span class="brand-mark">L5</span>
+      <span>
+        <strong>API Playground</strong>
+        <small>Laboratorio #5 · Express + DeepSeek</small>
+      </span>
+    </a>
+    <div class="top-actions">
+      <span class="connection" id="connectionStatus">
+        <span class="connection-dot"></span>
+        Comprobando API
+      </span>
+      <a class="ghost-button" href="/api-docs" target="_blank" rel="noreferrer">Abrir Swagger <span>↗</span></a>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="sidebar" aria-label="Operaciones de la API">
+      <div class="sidebar-heading">
+        <p class="eyebrow">Colección</p>
+        <h1>Notas + IA</h1>
+        <p>Elegí una operación, observá la petición y ejecutala contra el backend real.</p>
+      </div>
+
+      <nav class="operation-list" id="operationList">
+        <p class="nav-label">Notas</p>
+        <button class="operation active" data-operation="list" type="button">
+          <span class="method get">GET</span><span><strong>Listar notas</strong><small>/api/notas</small></span>
+        </button>
+        <button class="operation" data-operation="get" type="button">
+          <span class="method get">GET</span><span><strong>Buscar nota</strong><small>/api/notas/:id</small></span>
+        </button>
+        <button class="operation" data-operation="create" type="button">
+          <span class="method post">POST</span><span><strong>Crear nota</strong><small>/api/notas</small></span>
+        </button>
+        <button class="operation" data-operation="delete" type="button">
+          <span class="method delete">DEL</span><span><strong>Eliminar nota</strong><small>/api/notas/:id</small></span>
+        </button>
+
+        <p class="nav-label nav-label-spaced">Inteligencia artificial</p>
+        <button class="operation" data-operation="ask" type="button">
+          <span class="method ai">POST</span><span><strong>Preguntar</strong><small>/api/ia/preguntar</small></span>
+        </button>
+        <button class="operation" data-operation="summary" type="button">
+          <span class="method ai">POST</span><span><strong>Resumir nota</strong><small>/api/notas/:id/resumen</small></span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="shield">◆</span>
+        <p><strong>Clave protegida</strong><br>El navegador nunca recibe tu API key.</p>
+      </div>
+    </aside>
+
+    <section class="console">
+      <div class="intro-row">
+        <div>
+          <p class="eyebrow">Consola interactiva</p>
+          <h2 id="operationTitle">Listar todas las notas</h2>
+          <p id="operationDescription">Consulta el estado actual del almacenamiento en memoria.</p>
+        </div>
+        <div class="metric-strip" aria-label="Resumen del entorno">
+          <div><span id="noteCount">—</span><small>notas</small></div>
+          <div><span>6</span><small>endpoints</small></div>
+          <div><span>v1</span><small>API</small></div>
+        </div>
+      </div>
+
+      <div class="request-card panel">
+        <div class="panel-header">
+          <div>
+            <span class="panel-index">01</span>
+            <div><h3>Prepará la solicitud</h3><p>La URL se arma automáticamente con tus datos.</p></div>
+          </div>
+          <span class="safe-label">Mismo origen · JSON</span>
+        </div>
+
+        <div class="url-bar">
+          <span class="method get" id="requestMethod">GET</span>
+          <code id="requestPath">/api/notas</code>
+          <button class="send-button" id="sendRequest" type="button">
+            <span>Ejecutar</span><span class="send-icon">▶</span>
+          </button>
+        </div>
+
+        <div class="request-fields">
+          <label class="field id-field hidden" id="idField">
+            <span>ID de la nota</span>
+            <input id="noteId" type="number" min="1" value="1" inputmode="numeric">
+            <small>Se reemplaza en <code>:id</code>.</small>
+          </label>
+
+          <label class="field body-field hidden" id="bodyField">
+            <span>Body JSON</span>
+            <textarea id="requestBody" spellcheck="false" aria-describedby="bodyHint"></textarea>
+            <small id="bodyHint">Editá el ejemplo o ejecutalo tal como está.</small>
+          </label>
+
+          <div class="empty-body" id="emptyBody">
+            <span>{ }</span>
+            <div><strong>Esta operación no necesita body</strong><p>Solo presioná Ejecutar para enviar la solicitud.</p></div>
+          </div>
+        </div>
+
+        <div class="learning-note">
+          <span>APRENDÉ</span>
+          <p id="learningText">Express recibe la petición y el servicio devuelve el arreglo guardado en memoria.</p>
+        </div>
+      </div>
+
+      <div class="response-grid">
+        <section class="response-card panel" aria-live="polite">
+          <div class="panel-header response-heading">
+            <div>
+              <span class="panel-index">02</span>
+              <div><h3>Respuesta del servidor</h3><p>Estado, tiempo y JSON real.</p></div>
+            </div>
+            <button class="copy-button" id="copyResponse" type="button" disabled>Copiar JSON</button>
+          </div>
+
+          <div class="response-meta">
+            <span class="status-pill idle" id="responseStatus">Sin ejecutar</span>
+            <span id="responseTime">— ms</span>
+            <span id="responseSize">— bytes</span>
+          </div>
+
+          <pre class="response-output" id="responseOutput"><code>Elegí una operación y presioná “Ejecutar”.
+
+La respuesta aparecerá aquí sin ocultar los códigos HTTP.</code></pre>
+
+          <div class="token-row hidden" id="tokenRow">
+            <div><span>Entrada</span><strong id="inputTokens">0</strong><small>tokens</small></div>
+            <div><span>Salida</span><strong id="outputTokens">0</strong><small>tokens</small></div>
+            <div><span>Total</span><strong id="totalTokens">0</strong><small>tokens</small></div>
+          </div>
+        </section>
+
+        <aside class="guide-card panel">
+          <div class="panel-header compact">
+            <div>
+              <span class="panel-index">03</span>
+              <div><h3>Qué está pasando</h3><p>Seguí el recorrido de los datos.</p></div>
+            </div>
+          </div>
+          <ol class="flow" id="requestFlow">
+            <li class="active"><span>1</span><div><strong>Navegador</strong><small>Construye JSON</small></div></li>
+            <li><span>2</span><div><strong>Express</strong><small>Recibe la ruta</small></div></li>
+            <li><span>3</span><div><strong>Zod</strong><small>Valida el body</small></div></li>
+            <li><span>4</span><div><strong>Servicio</strong><small>Procesa la tarea</small></div></li>
+            <li><span>5</span><div><strong>DeepSeek</strong><small>Solo en rutas IA</small></div></li>
+          </ol>
+          <div class="tip" id="operationTip">
+            <span>TIP</span>
+            <p>Un estado 200 indica que la consulta se completó correctamente.</p>
+          </div>
+        </aside>
+      </div>
+
+      <section class="evidence panel">
+        <div class="panel-header">
+          <div>
+            <span class="panel-index">04</span>
+            <div><h3>Checklist de evidencia</h3><p>Los tres resultados que solicita la entrega.</p></div>
+          </div>
+          <span class="progress-label"><strong id="evidenceCount">0</strong>/3 ejecutadas</span>
+        </div>
+        <div class="evidence-grid">
+          <button class="evidence-item" data-operation="ask" type="button">
+            <span class="evidence-check" data-evidence="ask">1</span>
+            <div><strong>Pregunta real</strong><p>200 + respuesta + tokens</p></div><span>→</span>
+          </button>
+          <button class="evidence-item" data-operation="summary" type="button">
+            <span class="evidence-check" data-evidence="summary">2</span>
+            <div><strong>Resumen de nota</strong><p>3 viñetas + uso</p></div><span>→</span>
+          </button>
+          <button class="evidence-item" data-operation="ask" data-error-guide="true" type="button">
+            <span class="evidence-check" data-evidence="error">3</span>
+            <div><strong>Error controlado</strong><p>502 + IA_NO_DISPONIBLE</p></div><span>→</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="history-section">
+        <div class="section-title">
+          <div><p class="eyebrow">Actividad</p><h3>Historial de esta sesión</h3></div>
+          <button class="text-button" id="clearHistory" type="button">Limpiar historial</button>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="history-empty">Las solicitudes ejecutadas aparecerán aquí.</div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

@@ -9,6 +9,13 @@ test('las rutas inexistentes devuelven un error JSON 404', async () => {
   assert.equal(response.headers['x-powered-by'], undefined);
 });
 
+test('la raíz sirve la consola visual del laboratorio', async () => {
+  const response = await request(createApp()).get('/').expect(200).expect('Content-Type', /html/);
+  assert.match(response.text, /API Playground/);
+  assert.match(response.text, /Laboratorio #5/);
+  assert.doesNotMatch(response.text, /DEEPSEEK_API_KEY/);
+});
+
 test('el JSON mal formado devuelve 400 sin stack ni body original', async () => {
   const response = await request(createApp())
     .post('/api/notas')
