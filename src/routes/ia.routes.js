@@ -2,7 +2,7 @@ const { Router } = require('express');
 const { validateBody } = require('../middlewares/validate-body');
 const { preguntaSchema } = require('../utils/schemas');
 
-function createIaRouter({ claudeService }) {
+function createIaRouter({ deepseekService }) {
   const router = Router();
 
   /**
@@ -10,9 +10,9 @@ function createIaRouter({ claudeService }) {
    * /api/ia/preguntar:
    *   post:
    *     tags: [IA]
-   *     operationId: preguntarClaude
-   *     summary: Hacer una pregunta libre a Claude
-   *     description: Valida y recorta la pregunta antes de llamar a Claude. Límite de salida de 512 tokens.
+   *     operationId: preguntarDeepSeek
+   *     summary: Hacer una pregunta libre a DeepSeek
+   *     description: Valida y recorta la pregunta antes de llamar a DeepSeek. Límite de salida de 512 tokens.
    *     requestBody:
    *       required: true
    *       content:
@@ -21,7 +21,7 @@ function createIaRouter({ claudeService }) {
    *             $ref: '#/components/schemas/Pregunta'
    *     responses:
    *       '200':
-   *         description: Respuesta y consumo reportados por Claude; los contadores no son estimaciones.
+   *         description: Respuesta y consumo reportados por DeepSeek; los contadores no son estimaciones.
    *         content:
    *           application/json:
    *             schema:
@@ -38,7 +38,7 @@ function createIaRouter({ claudeService }) {
    *         $ref: '#/components/responses/ErrorInterno'
    */
   router.post('/preguntar', validateBody(preguntaSchema), async (req, res) => {
-    res.json(await claudeService.preguntar(req.body.pregunta));
+    res.json(await deepseekService.preguntar(req.body.pregunta));
   });
 
   return router;

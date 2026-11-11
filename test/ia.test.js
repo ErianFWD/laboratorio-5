@@ -1,51 +1,54 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const request = require('supertest');
-const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 const { createApp } = require('../src/app');
-const { createClaudeService } = require('../src/services/claude.service');
+const { createDeepSeekService } = require('../src/services/deepseek.service');
 
 // Fixtures del proveedor: no son respuestas reales ni evidencia de consumo de tokens.
-function fakeMessage(content = [{ type: 'text', text: 'Texto de prueba.' }]) {
+function fakeCompletion(content = 'Texto de prueba.') {
   return {
-    id: 'msg_test', type: 'message', role: 'assistant', model: 'modelo-de-prueba',
-    content, stop_reason: 'end_turn', stop_sequence: null,
-    usage: { input_tokens: 12, output_tokens: 7 },
+    id: 'chatcmpl_test', object: 'chat.completion', created: 1, model: 'deepseek-chat',
+    choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }],
+    usage: { prompt_tokens: 12, completion_tokens: 7, total_tokens: 19 },
   };
 }
 
 function sdkWithFetch(fetch) {
-  return new Anthropic({ apiKey: 'clave-de-prueba', maxRetries: 0, fetch });
+  return new OpenAI({
+    apiKey: 'clave-de-prueba',
+    baseURL: 'https://api.deepseek.com',
+    maxRetries: 0,
+    fetch,
+  });
 }
 
-test('preguntar usa messages.create, separa system y messages y conserva el uso', async () => {
+test('preguntar usa chat.completions.create con system y user y conserva el uso', async () => {
   let calls = 0;
   const client = sdkWithFetch(async (url, options) => {
     calls += 1;
-    assert.equal(new URL(url).pathname, '/v1/messages');
+    assert.equal(new URL(url).pathname, '/chat/completions');
     const body = JSON.parse(options.body);
     assert.equal(body.model, 'modelo-de-prueba');
     assert.equal(body.max_tokens, 512);
-    assert.match(body.system, /español/);
-    assert.deepEqual(body.messages, [{ role: 'user', content: '¿Qué es Express?' }]);
-    return Response.json(fakeMessage([
-      { type: 'text', text: 'Primer bloque.' },
-      { type: 'thinking', thinking: 'No debe exponerse.', signature: 'test' },
-      { type: 'text', text: 'Segundo bloque.' },
-    ]));
+    assert.match(body.messages[0].content, /español/);
+    assert.deepEqual(body.messages[1], { role: 'user', content: '¿Qué es Express?' });
+    return Response.json(fakeCompletion('Respuesta de prueba.'));
   });
-  const app = createApp({ claudeService: createClaudeService({ client, model: 'modelo-de-prueba' }) });
+  const app = createApp({
+    deepseekService: createDeepSeekService({ client, model: 'modelo-de-prueba' }),
+  });
   const response = await request(app).post('/api/ia/preguntar')
     .send({ pregunta: '  ¿Qué es Express?  ' }).expect(200);
   assert.deepEqual(response.body, {
-    respuesta: 'Primer bloque.\nSegundo bloque.', uso: { input_tokens: 12, output_tokens: 7 },
+    respuesta: 'Respuesta de prueba.', uso: { input_tokens: 12, output_tokens: 7 },
   });
   assert.equal(calls, 1);
 });
 
-test('pregunta valida tipos, campos y límites antes de invocar Claude', async () => {
+test('pregunta valida tipos, campos y límites antes de invocar DeepSeek', async () => {
   let calls = 0;
-  const app = createApp({ claudeService: {
+  const app = createApp({ deepseekService: {
     preguntar: async () => { calls += 1; return { respuesta: 'Prueba', uso: {} }; },
   } });
   for (const body of [{}, { pregunta: 'ab' }, { pregunta: '   ' }, { pregunta: 123 },
@@ -67,36 +70,39 @@ test('resumen busca la nota primero y pide tres viñetas breves en español', as
     calls += 1;
     const body = JSON.parse(options.body);
     assert.equal(body.max_tokens, 256);
-    assert.match(body.system, /tres viñetas breves en español/);
-    assert.deepEqual(JSON.parse(body.messages[0].content), { titulo: 'Tema', contenido: 'Contenido.' });
-    return Response.json(fakeMessage([{ type: 'text', text: '- Uno.\n- Dos.\n- Tres.' }]));
+    assert.match(body.messages[0].content, /tres viñetas breves en español/);
+    assert.deepEqual(JSON.parse(body.messages[1].content), {
+      titulo: 'Tema', contenido: 'Contenido.',
+    });
+    return Response.json(fakeCompletion('- Uno.\n- Dos.\n- Tres.'));
   });
-  const app = createApp({ claudeService: createClaudeService({ client }) });
-  const missing = await request(app).post('/api/notas/inexistente/resumen').expect(404);
+  const app = createApp({ deepseekService: createDeepSeekService({ client }) });
+  const missing = await request(app).post('/api/notas/999/resumen').expect(404);
   assert.equal(missing.body.error.codigo, 'NOTA_NO_ENCONTRADA');
   assert.equal(calls, 0);
   const nota = (await request(app).post('/api/notas')
     .send({ titulo: 'Tema', contenido: 'Contenido.' }).expect(201)).body;
   const response = await request(app).post(`/api/notas/${nota.id}/resumen`).expect(200);
   assert.deepEqual(response.body, {
-    notaId: nota.id, resumen: '- Uno.\n- Dos.\n- Tres.', uso: { input_tokens: 12, output_tokens: 7 },
+    notaId: nota.id, resumen: '- Uno.\n- Dos.\n- Tres.',
+    uso: { input_tokens: 12, output_tokens: 7 },
   });
   assert.equal(calls, 1);
   assert.deepEqual((await request(app).get(`/api/notas/${nota.id}`)).body, nota);
 });
 
 test('los errores HTTP del SDK se mapean sin filtrar detalles en ambos endpoints', async (t) => {
-  for (const [upstream, expected] of [[401, 502], [403, 502], [400, 502], [404, 502],
-    [429, 429], [408, 502], [500, 502], [503, 502], [529, 503]]) {
-    await t.test(`Claude ${upstream} → API ${expected}`, async () => {
+  for (const [upstream, expected] of [[400, 502], [401, 502], [402, 502], [403, 502],
+    [404, 502], [429, 429], [500, 503], [503, 503]]) {
+    await t.test(`DeepSeek ${upstream} → API ${expected}`, async () => {
       let calls = 0;
       const client = sdkWithFetch(async () => {
         calls += 1;
-        return Response.json({ type: 'error', error: {
-          type: 'api_error', message: 'detalle-interno-y-clave-de-prueba',
-        } }, { status: upstream, headers: { 'request-id': 'id-interno' } });
+        return Response.json({ error: {
+          message: 'detalle-interno-y-clave-de-prueba', type: 'api_error', code: 'privado',
+        } }, { status: upstream, headers: { 'x-request-id': 'id-interno' } });
       });
-      const app = createApp({ claudeService: createClaudeService({ client }) });
+      const app = createApp({ deepseekService: createDeepSeekService({ client }) });
       const nota = (await request(app).post('/api/notas')
         .send({ titulo: 'A', contenido: 'B' })).body;
       for (const [path, body] of [
@@ -116,26 +122,29 @@ test('los errores HTTP del SDK se mapean sin filtrar detalles en ambos endpoints
 });
 
 test('la falta de clave permite notas y devuelve 502 en IA; la nota ausente conserva 404', async () => {
-  const app = createApp({ claudeService: createClaudeService({ apiKey: '' }) });
+  const app = createApp({ deepseekService: createDeepSeekService({ apiKey: '' }) });
   await request(app).post('/api/notas').send({ titulo: 'A', contenido: 'B' }).expect(201);
-  const response = await request(app).post('/api/ia/preguntar').send({ pregunta: 'Hola' }).expect(502);
+  const response = await request(app).post('/api/ia/preguntar')
+    .send({ pregunta: 'Hola' }).expect(502);
   assert.equal(response.body.error.codigo, 'IA_NO_DISPONIBLE');
-  await request(app).post('/api/notas/no-existe/resumen').expect(404);
+  await request(app).post('/api/notas/999/resumen').expect(404);
 });
 
-test('conexión y timeout devuelven 503, y una respuesta vacía devuelve 502', async () => {
+test('conexión y timeout devuelven 503, y una respuesta incompleta devuelve 502', async () => {
   for (const client of [
     sdkWithFetch(async () => { throw new Error('detalle de red privado'); }),
-    { messages: { create: async () => { throw new Anthropic.APIConnectionTimeoutError(); } } },
+    { chat: { completions: { create: async () => { throw new OpenAI.APIConnectionTimeoutError(); } } } },
   ]) {
-    const app = createApp({ claudeService: createClaudeService({ client }) });
-    const response = await request(app).post('/api/ia/preguntar').send({ pregunta: 'Hola' }).expect(503);
+    const app = createApp({ deepseekService: createDeepSeekService({ client }) });
+    const response = await request(app).post('/api/ia/preguntar')
+      .send({ pregunta: 'Hola' }).expect(503);
     assert.equal(response.body.error.codigo, 'IA_NO_DISPONIBLE');
   }
-  for (const payload of [fakeMessage([]), { ...fakeMessage(), usage: {} }]) {
+  for (const payload of [fakeCompletion(''), { ...fakeCompletion(), usage: {} }]) {
     const client = sdkWithFetch(async () => Response.json(payload));
-    const app = createApp({ claudeService: createClaudeService({ client }) });
-    const response = await request(app).post('/api/ia/preguntar').send({ pregunta: 'Hola' }).expect(502);
+    const app = createApp({ deepseekService: createDeepSeekService({ client }) });
+    const response = await request(app).post('/api/ia/preguntar')
+      .send({ pregunta: 'Hola' }).expect(502);
     assert.equal(response.body.error.codigo, 'IA_NO_DISPONIBLE');
   }
 });

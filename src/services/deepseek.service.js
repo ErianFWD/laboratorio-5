@@ -1,4 +1,4 @@
-const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 const { config } = require('../config/env');
 const { AppError } = require('../utils/app-error');
 
@@ -6,7 +6,7 @@ function providerError(error) {
   let status = 502;
   if (error?.status === 429) {
     status = 429;
-  } else if (error?.status === 529 || error instanceof Anthropic.APIConnectionError) {
+  } else if (error instanceof OpenAI.APIConnectionError || error?.status >= 500) {
     status = 503;
   }
 
@@ -14,37 +14,44 @@ function providerError(error) {
   return new AppError(status, 'IA_NO_DISPONIBLE', 'El servicio de IA no está disponible. Intentá más tarde.');
 }
 
-function createClaudeService({ apiKey = config.apiKey, model = config.model, client } = {}) {
-  let anthropic = client;
+function createDeepSeekService({
+  apiKey = config.apiKey,
+  model = config.model,
+  baseURL = config.baseURL,
+  client,
+} = {}) {
+  let deepseek = client;
 
   async function generar(system, content, maxTokens) {
-    if (!anthropic) {
+    if (!deepseek) {
       if (!apiKey) {
         throw new AppError(502, 'IA_NO_DISPONIBLE', 'El servicio de IA no está disponible. Intentá más tarde.');
       }
-      anthropic = new Anthropic({ apiKey, timeout: 30000, maxRetries: 0 });
+      deepseek = new OpenAI({ apiKey, baseURL, timeout: 30000, maxRetries: 0 });
     }
 
     try {
-      const message = await anthropic.messages.create({
+      const completion = await deepseek.chat.completions.create({
         model,
         max_tokens: maxTokens,
-        system,
-        messages: [{ role: 'user', content }],
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content },
+        ],
       });
 
-      const respuesta = message.content
-        .filter((block) => block.type === 'text')
-        .map((block) => block.text)
-        .join('\n')
-        .trim();
-      const { input_tokens, output_tokens } = message.usage;
-      if (!respuesta || !Number.isInteger(input_tokens) || input_tokens < 0
-        || !Number.isInteger(output_tokens) || output_tokens < 0) {
+      const respuesta = completion.choices?.[0]?.message?.content?.trim();
+      const inputTokens = completion.usage?.prompt_tokens;
+      const outputTokens = completion.usage?.completion_tokens;
+      if (!respuesta || !Number.isInteger(inputTokens) || inputTokens < 0
+        || !Number.isInteger(outputTokens) || outputTokens < 0) {
         throw new Error('Respuesta del proveedor incompleta.');
       }
 
-      return { respuesta, uso: { input_tokens, output_tokens } };
+      return {
+        respuesta,
+        uso: { input_tokens: inputTokens, output_tokens: outputTokens },
+      };
     } catch (error) {
       throw providerError(error);
     }
@@ -66,4 +73,4 @@ function createClaudeService({ apiKey = config.apiKey, model = config.model, cli
   };
 }
 
-module.exports = { createClaudeService };
+module.exports = { createDeepSeekService };

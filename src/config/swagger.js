@@ -16,14 +16,14 @@ const openapi = swaggerJsdoc({
     openapi: '3.0.3',
     info: {
       title: 'Laboratorio #5: notas e IA', version: '1.0.0',
-      description: 'API de notas en memoria con Claude desde el backend. '
-        + 'Documentación interactiva: /api-docs. Los ejemplos son ilustrativos, no resultados reales de Claude. '
+      description: 'API de notas en memoria con DeepSeek desde el backend. '
+        + 'Documentación interactiva: /api-docs. Los ejemplos son ilustrativos, no resultados reales de DeepSeek. '
         + 'La clave se configura únicamente en el servidor; no se ingresa en Swagger.',
     },
     servers: [{ url: '/', description: 'Servidor actual (PORT configurable)' }],
     tags: [
       { name: 'Notas', description: 'Las notas se pierden al reiniciar el servidor.' },
-      { name: 'IA', description: 'Consultas a Claude; requieren una clave válida en el backend.' },
+      { name: 'IA', description: 'Consultas a DeepSeek; requieren una clave válida en el backend.' },
     ],
     components: {
       parameters: {
@@ -36,9 +36,9 @@ const openapi = swaggerJsdoc({
           'VALIDACION_ERROR', 'El body no cumple el esquema.'),
         NotaNoEncontrada: errorResponse('La nota no existe.', 'NOTA_NO_ENCONTRADA', 'La nota no existe.'),
         ErrorInterno: errorResponse('Error inesperado sin detalles internos.', 'ERROR_INTERNO', 'Ocurrió un error interno.'),
-        IALimite: errorResponse('Claude limitó las solicitudes (429). Reintentá más tarde.', 'IA_NO_DISPONIBLE', aiMessage),
-        IAError: errorResponse('Clave ausente, error HTTP distinto de 429/529 o respuesta incompleta.', 'IA_NO_DISPONIBLE', aiMessage),
-        IANoDisponible: errorResponse('Claude saturado (529), error de conexión o timeout de red.', 'IA_NO_DISPONIBLE', aiMessage),
+        IALimite: errorResponse('DeepSeek limitó las solicitudes (429). Reintentá más tarde.', 'IA_NO_DISPONIBLE', aiMessage),
+        IAError: errorResponse('Clave ausente, error 4xx distinto de 429 o respuesta incompleta.', 'IA_NO_DISPONIBLE', aiMessage),
+        IANoDisponible: errorResponse('DeepSeek devolvió un error 5xx, hubo un error de conexión o un timeout.', 'IA_NO_DISPONIBLE', aiMessage),
       },
       schemas: {
         NuevaNota: {
@@ -46,7 +46,7 @@ const openapi = swaggerJsdoc({
           properties: {
             titulo: { type: 'string', minLength: 1, maxLength: 100, example: 'Repaso de Express' },
             contenido: { type: 'string', minLength: 1, maxLength: 5000,
-              example: 'Express organiza rutas y middlewares. Zod valida la entrada. Claude genera resúmenes.' },
+              example: 'Express organiza rutas y middlewares. Zod valida la entrada. DeepSeek genera resúmenes.' },
           },
         },
         Nota: {
@@ -65,7 +65,7 @@ const openapi = swaggerJsdoc({
         },
         Uso: {
           type: 'object', additionalProperties: false, required: ['input_tokens', 'output_tokens'],
-          description: 'Contadores reales de Claude; pendientes hasta ejecutar una consulta con clave válida.',
+          description: 'Contadores reales de DeepSeek; pendientes hasta ejecutar una consulta con clave válida.',
           properties: {
             input_tokens: { type: 'integer', minimum: 0, description: 'Tokens reportados por usage.input_tokens.' },
             output_tokens: { type: 'integer', minimum: 0, description: 'Tokens reportados por usage.output_tokens.' },

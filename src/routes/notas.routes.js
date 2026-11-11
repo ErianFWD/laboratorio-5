@@ -2,7 +2,7 @@ const { Router } = require('express');
 const { validateBody } = require('../middlewares/validate-body');
 const { notaSchema } = require('../utils/schemas');
 
-function createNotasRouter({ notasService, claudeService }) {
+function createNotasRouter({ notasService, deepseekService }) {
   const router = Router();
 
   /**
@@ -120,12 +120,12 @@ function createNotasRouter({ notasService, claudeService }) {
    *     tags: [Notas, IA]
    *     operationId: resumirNota
    *     summary: Resumir una nota en tres viñetas breves en español
-   *     description: No requiere body. Busca la nota antes de llamar a Claude. No modifica la nota. Límite de salida de 256 tokens.
+   *     description: No requiere body. Busca la nota antes de llamar a DeepSeek. No modifica la nota. Límite de salida de 256 tokens.
    *     parameters:
    *       - $ref: '#/components/parameters/NotaId'
    *     responses:
    *       '200':
-   *         description: Identificador, resumen y consumo reportado por Claude.
+   *         description: Identificador, resumen y consumo reportado por DeepSeek.
    *         content:
    *           application/json:
    *             schema:
@@ -144,9 +144,9 @@ function createNotasRouter({ notasService, claudeService }) {
    *         $ref: '#/components/responses/ErrorInterno'
    */
   router.post('/:id/resumen', async (req, res) => {
-    // Buscar primero: una nota inexistente nunca consume una llamada a Claude.
+    // Buscar primero: una nota inexistente nunca consume una llamada a DeepSeek.
     const nota = notasService.obtener(Number(req.params.id));
-    const { respuesta, uso } = await claudeService.resumir(nota);
+    const { respuesta, uso } = await deepseekService.resumir(nota);
     res.json({ notaId: nota.id, resumen: respuesta, uso });
   });
 
