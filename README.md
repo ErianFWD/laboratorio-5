@@ -109,25 +109,25 @@ npm test
 - `npm ci`: instalación reproducible completada; la auditoría de esa instalación informó cero vulnerabilidades.
 - `npm test`: **27 pruebas aprobadas**, sin fallos ni pruebas omitidas. Cubren la consola visual y sus assets, CRUD, estados 200/201/204/400/404, límites de Zod, rechazo antes de llamar a IA, errores de conexión/timeout y del proveedor, preservación de contadores, Swagger y validez de OpenAPI 3.
 - `npm start` y `npm run dev`: arranque comprobado con solicitudes HTTP reales a `/` y `/api-docs/`, ambas con 200.
-- Pregunta real a DeepSeek: estado 200, **26 tokens de entrada y 208 de salida**.
-- Resumen real de una nota: estado 200, exactamente tres viñetas, **125 tokens de entrada y 53 de salida**.
+- Pregunta real a DeepSeek: estado 200, **26 tokens de entrada y 241 de salida** en la captura final.
+- Resumen real de una nota: estado 200, exactamente tres viñetas, **108 tokens de entrada y 36 de salida** en la captura final.
 - Llamada real a DeepSeek con una clave deliberadamente falsa: **401 del proveedor → 502 de la API**, con `IA_NO_DISPONIBLE` y sin detalles internos. La captura desde Swagger sigue pendiente.
 
 Las pruebas automáticas del SDK usan respuestas controladas mediante `fetch`; sus textos y contadores son fixtures. Los resultados enumerados arriba provienen de llamadas reales realizadas el 11 de noviembre de 2026 con la configuración local. Los ejemplos de Swagger siguen siendo ilustrativos.
 
 | Evidencia de entrega | Estado |
 | --- | --- |
-| Pregunta libre con respuesta real de DeepSeek | Respuesta y tokens verificados; **captura en Swagger pendiente**. |
-| Resumen real de una nota en tres viñetas | Respuesta y tokens verificados; **captura en Swagger pendiente**. |
-| Error 502 con clave falsa | Comportamiento real verificado; **captura en Swagger pendiente**. |
-| Tokens de entrada/salida de la pregunta libre | **26 / 208**, reportados por DeepSeek. |
-| Tokens de entrada/salida del resumen | **125 / 53**, reportados por DeepSeek. |
+| Pregunta libre con respuesta real de DeepSeek | [Captura Swagger 200](evidencias/capturas/01-pregunta-real-deepseek.png). |
+| Resumen real de una nota en tres viñetas | [Captura Swagger 200](evidencias/capturas/02-resumen-real-nota.png). |
+| Error 502 con clave falsa | [Captura Swagger 502](evidencias/capturas/03-error-502-clave-falsa.png). |
+| Tokens de entrada/salida de la pregunta libre | **26 / 241**, reportados por DeepSeek. |
+| Tokens de entrada/salida del resumen | **108 / 36**, reportados por DeepSeek. |
 
 ### Evidencias incorporadas
 
 El repositorio incluye las evidencias en [PDF](evidencias/Evidencias_Laboratorio_5.pdf) y en formato [DOCX editable](evidencias/Evidencias_Laboratorio_5.docx). Ambos documentos contienen seis páginas con capturas de Swagger para listado, creación y consulta de notas, un caso 404 al resumir una nota inexistente y los errores documentados en OpenAPI. Ninguno contiene claves ni variables de entorno.
 
-Las capturas de la pregunta real, el resumen exitoso en tres viñetas y el 502 ejecutado con clave falsa continúan pendientes; los tres comportamientos ya fueron verificados técnicamente y están descritos arriba.
+Las tres evidencias principales también están disponibles como PNG independientes en `evidencias/capturas/`: pregunta real, resumen exitoso en tres viñetas y error 502 ejecutado con clave falsa. Ninguna captura muestra la clave o el archivo `.env`.
 
 ## Cómo obtener las tres capturas en Swagger
 
@@ -163,17 +163,17 @@ Las capturas de la pregunta real, el resumen exitoso en tres viñetas y el 502 e
 
    Capturá la operación, el código y el body. Una clave vacía también produce 502, pero no realiza una llamada al proveedor y no sirve como evidencia de una clave falsa. Si no hay conexión con DeepSeek se obtiene 503: resolvé la conexión y repetí, sin alterar ni fabricar el resultado. Restaurá tu clave válida o dejala vacía y reiniciá al terminar. No incluyás `.env`, la consola con credenciales ni una clave real en las capturas.
 
-Las llamadas reales ya fueron verificadas. Solo quedan pendientes las tres capturas desde Swagger UI; no deben mostrar el archivo `.env`, una terminal con credenciales ni la clave real.
+Las llamadas y las tres capturas desde Swagger UI ya fueron verificadas. No muestran el archivo `.env`, una terminal con credenciales ni la clave real.
 
 ## Seis reflexiones
 
 1. **Seguridad de la clave.** La clave de DeepSeek pertenece al servidor porque habilita solicitudes con cargo a la cuenta. Se lee de `.env` después de cargar dotenv; no se manda al navegador, no forma parte del contrato Swagger ni se incluye en respuestas. Se versiona solo el ejemplo vacío y se revisa el staging antes de cada commit. Si una clave se publica, hay que revocarla y reemplazarla; quitarla del último archivo no elimina su presencia del historial.
 
-2. **Manejo del 401 de DeepSeek.** El 401 indica que DeepSeek rechazó las credenciales del backend. El cliente de esta API no recibe los detalles privados del proveedor: el servicio lo convierte en 502 con `IA_NO_DISPONIBLE`. El servidor sigue atendiendo notas. La conversión se verificó con una llamada real usando una clave deliberadamente falsa; la captura desde Swagger sigue pendiente.
+2. **Manejo del 401 de DeepSeek.** El 401 indica que DeepSeek rechazó las credenciales del backend. El cliente de esta API no recibe los detalles privados del proveedor: el servicio lo convierte en 502 con `IA_NO_DISPONIBLE`. El servidor sigue atendiendo notas. La conversión y su captura desde Swagger se verificaron con una llamada real usando una clave deliberadamente falsa.
 
 3. **Diferencia entre `system` y `messages`.** En la API compatible con OpenAI, la instrucción de sistema se envía como el primer elemento de `messages` con rol `system`; el contenido se envía después con rol `user`. El primero define idioma, brevedad y formato, mientras el segundo contiene la pregunta o nota. En el resumen se aclara que la nota son datos para reducir el riesgo de que sus instrucciones cambien la tarea; el cumplimiento real de las tres viñetas se revisa en la captura pendiente.
 
-4. **Consumo de tokens.** DeepSeek reporta `prompt_tokens` y `completion_tokens`; esta API los expone como `input_tokens` y `output_tokens`. El texto, las instrucciones y la respuesta afectan el consumo. `max_tokens` limita la salida; no es el consumo medido ni limita por sí solo la entrada. La pregunta real consumió 26 tokens de entrada y 208 de salida; el resumen consumió 125 y 53. Estos valores vienen del proveedor y no de fixtures. No se calculó el costo monetario.
+4. **Consumo de tokens.** DeepSeek reporta `prompt_tokens` y `completion_tokens`; esta API los expone como `input_tokens` y `output_tokens`. El texto, las instrucciones y la respuesta afectan el consumo. `max_tokens` limita la salida; no es el consumo medido ni limita por sí solo la entrada. En las capturas finales, la pregunta consumió 26 tokens de entrada y 241 de salida; el resumen consumió 108 y 36. Estos valores vienen del proveedor y no de fixtures. No se calculó el costo monetario.
 
 5. **Validación del body.** El contenido HTTP es entrada no confiable. Zod comprueba presencia, tipos, longitudes y campos adicionales después de recortar espacios. Un body inválido recibe 400 antes de guardar una nota o llamar a DeepSeek, evitando datos inconsistentes y solicitudes innecesarias. El parser JSON y el middleware central también transforman JSON roto o cuerpos excesivos en errores JSON controlados.
 
